@@ -1,489 +1,375 @@
-module datapath(read_signals, write_signals, Mdata_in, IOdata_in, ALU_signals, reset, IOdata_out, Maddress_out, Mdata_out, clk); // signals will be generated internally in the future
-	input[26:0] read_signals, write_signals; 
+module Datapath(IOdata_out, Maddress_out, Mdata_out, clk, Mdata_in, IOdata_in, reset, mem_write, mem_read, G_ra, G_rb, G_rc, R_in,
+	R_out, BA_out, write_signals, read_signals, ALU_signals);
 	input[31:0] Mdata_in, IOdata_in;
-	input[3:0] ALU_signals;
-	input reset;
+	input[9:0] write_signals, read_signals;
+	input[4:0] ALU_signals;
+	input reset, mem_write, mem_read, G_ra, G_rb, G_rc, R_in, R_out, BA_out;
 	output[31:0] IOdata_out, Maddress_out, Mdata_out;
 	output clk;
-	
-	//Register Output Selection Wires
-	wire R0_en, R1_en, R2_en, R3_en, R4_en, R5_en, R6_en, R7_en,
-		R8_en, R9_en, R10_en, R11_en, R12_en, R13_en, R14_en, R15_en,
-		HI_en, LO_en, Zhi_en, Zlo_en, PC_en, MDR_en, InPort_en, C_en;
-	
-	//Register write wires
-	wire R0_write, R1_write, R2_write, R3_write, R4_write, R5_write, R6_write, R7_write,
-		R8_write, R9_write, R10_write, R11_write, R12_write, R13_write, R14_write, R15_write,
-		HI_write, LO_write, PC_write, MDR_write, MAR_write, InPort_write, OutPort_write, Y_write, IR_write;
+
+
+	//Register write enable wires
+	wire HI_write_enable, LO_write_enable, Zhi_write_enable, Zlo_write_enable, PC_write_enable, MDR_write_enable, MAR_write_enable, InPort_write_enable, OutPort_write_enable, Y_write_enable, IR_write_enable;
+	wire[15:0] GPR_write_enable, GPR_read_signals;
 	
 	//Register output wires
-	wire[31:0] BusMuxIn_R0, BusMuxIn_R1, BusMuxIn_R2, BusMuxIn_R3,
-		BusMuxIn_R4, BusMuxIn_R5, BusMuxIn_R6, BusMuxIn_R7, BusMuxIn_R8,
-		BusMuxIn_R9, BusMuxIn_R10, BusMuxIn_R11, BusMuxIn_R12,
-		BusMuxIn_R13, BusMuxIn_R14, BusMuxIn_R15,
-		BusMuxIn_HI, BusMuxIn_LO, BusMuxIn_Zhi, BusMuxIn_Zlo,
-		BusMuxIn_PC, BusMuxIn_MDR, BusMuxIn_InPort, C_sign_extended; //what is C_sign extended
-	
+	wire[31:0] R0_output, R1_output, R2_output, R3_output, R4_output, R5_output, R6_output, R7_output, R8_output, R9_output, R10_output, 
+		R11_output, R12_output, R13_output, R14_output, R15_output, HI_output, LO_output, Zhi_output, Zlo_output, PC_output, MDR_output, InPort_output, C_sign_extended; 
+
 	//other wires
 	wire clk, Mem_read, Mem_write;
-	wire[31:0] Bus, MDMux_out, MDR_data, ALU_Y_input;
+	wire[31:0] Bus, MDMux_out, MDR_data, ALU_Y_input, Bus_enable, BusMuxIn[31:0];
 	wire[63:0] ALU_output; 
-	wire[31:0] CLU_in; //goes to ALU
-		
-	assign Mem_read = read_signals[26];
-	assign Mem_write = write_signals[26];
+	wire[31:0] CLU_in; //goes to CLU
 
 	//initialise clock
 	clock synchronous_clock(clk);
+
+	//initialise CLU
+	CLU control_unit(G_ra, G_rb, G_rc, R_in, R_out, BA_out, CLU_in, GPR_read_signals, GPR_write_enable, C_sign_extended);
 	
 	//initialise ALU
-	ALU Alu(Bus, ALU_Y_input, ALU_output, ALU_signals);
+	ALU logic_unit(Bus, ALU_Y_input, ALU_output, ALU_signals);
 	
-	//initialise multiplexers
-	MDMux_in MDR_input_select(Bus, Mdata_in, Mem_read, MDMux_out);
-	MDMux_out MDR_output_select(MDR_data, Mem_write, BusMuxIn_MDR, Mdata_out); 
-	Mux32to1 Bus_drive_mux(Bus, BusMuxIn_R0, BusMuxIn_R1, BusMuxIn_R2, BusMuxIn_R3,
-		BusMuxIn_R4, BusMuxIn_R5, BusMuxIn_R6, BusMuxIn_R7, BusMuxIn_R8,
-		BusMuxIn_R9, BusMuxIn_R10, BusMuxIn_R11, BusMuxIn_R12,
-		BusMuxIn_R13, BusMuxIn_R14, BusMuxIn_R15,
-		BusMuxIn_HI, BusMuxIn_LO, BusMuxIn_Zhi, BusMuxIn_Zlo,
-		BusMuxIn_PC, BusMuxIn_MDR, BusMuxIn_InPort, C_sign_extended,
-		R0_en, R1_en, R2_en, R3_en, R4_en, R5_en, R6_en, R7_en,
-		R8_en, R9_en, R10_en, R11_en, R12_en, R13_en, R14_en, R15_en,
-		HI_en, LO_en, Zhi_en, Zlo_en, PC_en, MDR_en, InPort_en, C_en);
+	//initialise bus multiplexer
+	Bus_Write_Mux Bus_Mux(Bus, Bus_enable, R0_output, R1_output, R2_output, R3_output, R4_output, R5_output, R6_output, R7_output, R8_output, R9_output, R10_output, 
+		R11_output, R12_output, R13_output, R14_output, R15_output, HI_output, LO_output, Zhi_output, Zlo_output, PC_output, MDR_output, InPort_output, C_sign_extended);
 	
-	//initialise registers
-	reg32 R0(BusMuxIn_R0, reset, clk, R0_write, Bus);
-	reg32 R1(BusMuxIn_R1, reset, clk, R1_write, Bus);
-	reg32 R2(BusMuxIn_R2, reset, clk, R2_write, Bus);
-	reg32 R3(BusMuxIn_R3, reset, clk, R3_write, Bus);
-	reg32 R4(BusMuxIn_R4, reset, clk, R4_write, Bus);
-	reg32 R5(BusMuxIn_R5, reset, clk, R5_write, Bus);
-	reg32 R6(BusMuxIn_R6, reset, clk, R6_write, Bus);
-	reg32 R7(BusMuxIn_R7, reset, clk, R7_write, Bus);
-	reg32 R8(BusMuxIn_R8, reset, clk, R8_write, Bus);
-	reg32 R9(BusMuxIn_R9, reset, clk, R9_write, Bus);
-	reg32 R10(BusMuxIn_R10, reset, clk, R10_write, Bus);
-	reg32 R11(BusMuxIn_R11, reset, clk, R11_write, Bus);
-	reg32 R12(BusMuxIn_R12, reset, clk, R12_write, Bus);
-	reg32 R13(BusMuxIn_R13, reset, clk, R13_write, Bus);
-	reg32 R14(BusMuxIn_R14, reset, clk, R14_write, Bus);
-	reg32 R15(BusMuxIn_R15, reset, clk, R15_write, Bus);
+	//initialise registers	
+	reg32_R0 R0(R0_output, reset, clk, BA_out, GPR_write_enable[0], Bus);
+	reg32 R1(R1_output, reset, clk, GPR_write_enable[1], Bus);
+	reg32 R2(R2_output, reset, clk, GPR_write_enable[2], Bus);
+	reg32 R3(R3_output, reset, clk, GPR_write_enable[3], Bus);
+	reg32 R4(R4_output, reset, clk, GPR_write_enable[4], Bus);
+	reg32 R5(R5_output, reset, clk, GPR_write_enable[5], Bus);
+	reg32 R6(R6_output, reset, clk, GPR_write_enable[6], Bus);
+	reg32 R7(R7_output, reset, clk, GPR_write_enable[7], Bus);
+	reg32 R8(R8_output, reset, clk, GPR_write_enable[8], Bus);
+	reg32 R9(R9_output, reset, clk, GPR_write_enable[9], Bus);
+	reg32 R10(R10_output, reset, clk, GPR_write_enable[10], Bus);
+	reg32 R11(R11_output, reset, clk, GPR_write_enable[11], Bus);
+	reg32 R12(R12_output, reset, clk, GPR_write_enable[12], Bus);
+	reg32 R13(R13_output, reset, clk, GPR_write_enable[13], Bus);
+	reg32 R14(R14_output, reset, clk, GPR_write_enable[14], Bus);
+	reg32 R15(R15_output, reset, clk, GPR_write_enable[15], Bus);
 	
-	reg32 HI(BusMuxIn_HI, reset, clk, HI_write, Bus);
-	reg32 LO(BusMuxIn_LO, reset, clk, LO_write, Bus);
-	reg32 PC(BusMuxIn_PC, reset, clk, PC_write, Bus);
-	reg32 MDR(MDR_data, reset, clk, MDR_write, MDMux_out); //* both sides connected to multiplexers
-	reg32 MAR(Maddress_out, reset, clk, MAR_write, Bus);
-	reg32 InPort(BusMuxIn_InPort, reset, clk, InPort_write, IOdata_in); //*note always accept new data from IO 
-	reg32 OutPort(IOdata_out, reset, clk, OutPort_write, Bus);//*
-	
-	reg32 IR(CLU_in, reset, clk, IR_write, Bus);
-	
-	reg32 Y(ALU_Y_input, reset, clk, Y_write, Bus); //write to Y
-	reg64 Z(BusMuxIn_Zhi, BusMuxIn_Zlo, reset, clk, ALU_output);// writes to low and hi
+	reg32 HI(HI_output, reset, clk, HI_write_enable, Bus);
+	reg32 LO(LO_output, reset, clk, LO_write_enable, Bus);
+	reg32 PC(PC_output, reset, clk, PC_write_enable, Bus);
+
+	reg32_MDR MDR(Mdata_out, MDR_output, reset, clk, MDR_write_enable, Mem_write, Mem_read, Bus, Mdata_in); //change Mem_write to Mem_write_enable
+
+	reg32 MAR(Maddress_out, reset, clk, MAR_write_enable, Bus);
+	reg32 InPort(InPort_output, reset, clk, InPort_write_enable, IOdata_in); //*note always accept new data from IO 
+	reg32 OutPort(IOdata_out, reset, clk, OutPort_write_enable, Bus);//*
+	reg32 IR(CLU_in, reset, clk, IR_write_enable, Bus);
+	reg32 Y(ALU_Y_input, reset, clk, Y_write_enable, Bus); //write to Y
+	reg64 Z(Zhi_output, Zlo_output, reset, clk, ALU_output);// writes to low and hi
 	
 	//assign inputs to Register Selection Wires (will be done by CLU in future)
-	assign R0_en = read_signals[0];
-	assign R1_en = read_signals[1];
-	assign R2_en = read_signals[2];
-	assign R3_en = read_signals[3];
-	assign R4_en = read_signals[4];
-	assign R5_en = read_signals[5];
-	assign R6_en = read_signals[6];
-	assign R7_en = read_signals[7];
-	assign R8_en = read_signals[8];
-	assign R9_en = read_signals[9];
-	assign R10_en = read_signals[10];
-	assign R11_en = read_signals[11];
-	assign R12_en = read_signals[12];
-	assign R13_en = read_signals[13];
-	assign R14_en = read_signals[14];
-	assign R15_en = read_signals[15];
-	assign HI_en = read_signals[16];
-	assign LO_en = read_signals[17];
-	assign Zhi_en = read_signals[18];
-	assign Zlo_en = read_signals[19];
-	assign PC_en = read_signals[20];
-	assign MDR_en = read_signals[21];
-	assign InPort_en = read_signals[22];
-	assign C_en = read_signals[23];
+
+	assign HI_write_enable = write_signals[0];
+	assign LO_write_enable = write_signals[1];
+	assign Zhi_write_enable = write_signals[2];
+	assign Zlo_write_enable = write_signals[3];
+	assign PC_write_enable = write_signals[4];
+	assign MDR_write_enable = write_signals[5];
+	assign OutPort_write_enable = write_signals[6];
+	assign InPort_write_enable = 1; //note: always trying to read, this will be updated
+	assign MAR_write_enable = write_signals[7];
+	assign Y_write_enable = write_signals[8];
+	assign IR_write_enable = write_signals[9];
 	
-	assign R0_write = write_signals[0];
-	assign R1_write = write_signals[1];
-	assign R2_write = write_signals[2];
-	assign R3_write = write_signals[3];
-	assign R4_write = write_signals[4];
-	assign R5_write = write_signals[5];
-	assign R6_write = write_signals[6];
-	assign R7_write = write_signals[7];
-	assign R8_write = write_signals[8];
-	assign R9_write = write_signals[9];
-	assign R10_write = write_signals[10];
-	assign R11_write = write_signals[11];
-	assign R12_write = write_signals[12];
-	assign R13_write = write_signals[13];
-	assign R14_write = write_signals[14];
-	assign R15_write = write_signals[15];
-	assign HI_write = write_signals[16];
-	assign LO_write = write_signals[17];
-	assign Zhi_write = write_signals[18];
-	assign Zlo_write = write_signals[19];
-	assign PC_write = write_signals[20];
-	assign MDR_write = write_signals[21];
-	assign OutPort_write = write_signals[22];
-	assign InPort_write = 1; //note: always trying to read, this will be updated
-	assign MAR_write = write_signals[23];
-	assign Y_write = write_signals[24];
-	assign IR_write = write_signals[25];
+	assign Bus_enable[15:0] = GPR_read_signals[15:0]; //R0, R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12 R13, R14, R15,
+	assign Bus_enable[23:16] = read_signals[7:0]; //HI_en, LO_en, Zhi_en, Zlo_en, PC_en, MDR_en, InPort_en, C_en
+	
 endmodule
 
+module CLU(G_ra, G_rb, G_rc, R_in, R_out, BA_out, IR, read_signals, write_signals, C_sign_extended);
+	input G_ra, G_rb, G_rc, R_in, R_out, BA_out;
+	input[31:0] IR;
+	output[15:0] read_signals, write_signals;
+	output[31:0] C_sign_extended;
+	
+	Select_Decode SD(G_ra, G_rb, G_rc, R_in, R_out, BA_out, IR[26:23], IR[22:19], IR[18:15], read_signals, write_signals);
+	
+endmodule
+	
+module Select_Decode(G_ra, G_rb, G_rc, R_in, R_out, BA_out, Ra, Rb, Rc, read_signals, write_signals);
+	input G_ra, G_rb, G_rc, R_in, R_out, BA_out;
+	input[3:0] Ra, Rb, Rc;
+	output[15:0] read_signals, write_signals;
+	wire[3:0] decoder_input;
+	wire[15:0] decoder_output;
+	decoder_4_16 decoder(decoder_input, decoder_output);
+	
+	assign decoder_input = (Ra & G_ra) & (Rb & G_rb) & (Rc & G_rb);
+	assign read_signals = R_in & decoder_output;
+	assign write_signals = (BA_out & R_out) & decoder_output;
+	
+endmodule
+	
+	
+		
+module decoder_4_16 (in, out);
+	input[3:0] in;
+	output [15:0] out;
+	assign out[0] = (!in[3]) & (!in[2]) & (!in[1]) & (!in[0]);
+	assign out[1] = (!in[3]) & (!in[2]) & (!in[1]) & (in[0]);
+	assign out[2] = (!in[3]) & (!in[2]) & (in[1]) & (!in[0]);
+	assign out[3] = (!in[3]) & (!in[2]) & (in[1]) & (in[0]);
+	assign out[4] = (!in[3]) & (in[2]) & (!in[1]) & (!in[0]);
+	assign out[5] = (!in[3]) & (in[2]) & (!in[1]) & (in[0]);
+	assign out[6] = (!in[3]) & (in[2]) & (in[1]) & (!in[0]);
+	assign out[7] = (!in[3]) & (in[2]) & (in[1]) & (in[0]);
+	assign out[8] = (in[3]) & (!in[2]) & (!in[1]) & (!in[0]);
+	assign out[9] = (in[3]) & (!in[2]) & (!in[1]) & (in[0]);
+	assign out[10] = (in[3]) & (!in[2]) & (in[1]) & (!in[0]);
+	assign out[11] = (in[3]) & (!in[2]) & (in[1]) & (in[0]);
+	assign out[12] = (in[3]) & (in[2]) & (!in[1]) & (!in[0]);
+	assign out[13] = (in[3]) & (in[2]) & (!in[1]) & (in[0]);
+	assign out[14] = (in[3]) & (in[2]) & (in[1]) & (!in[0]);
+	assign out[15] = (in[3]) & (in[2]) & (in[1]) & (in[0]);
+endmodule
 
 module ALU(A, B, C, opperation_signal);
 	input[31:0] A, B;
-	input[3:0] opperation_signal;
+	input[4:0] opperation_signal;
 	output[63:0] C;
 	reg[63:0] C;
-	//reg[31:0]ROR_out, ROL_out;
-	//reg ROR_en, ROL_en;
-	//ROR rotate_right(A, B, ROR_out);
-	//ROL rotate_left(A, B, ROL_out);
-	
-	
+	integer i, rotateCount;
 	always @(*) begin
-		if (opperation_signal == 4'b0000) begin //ADD
+		if (opperation_signal == 5'b00101) begin //ADD
 			C[31:0] = A + B;
 			end
-		if (opperation_signal == 4'b0001) begin //SUB
+		if (opperation_signal == 5'b00110) begin //SUB
 			C[31:0] = A - B;
 			end
-		if (opperation_signal == 4'b0010) begin //MUL
+		if (opperation_signal == 5'b10000) begin //MUL
 			C = A * B;
 			end
-		if (opperation_signal == 4'b0011) begin //DIV
+		if (opperation_signal == 5'b10001) begin //DIV
 			C = A / B;
 			end
-		if (opperation_signal == 4'b0100) begin //SHR
+		if (opperation_signal == 5'b01001) begin //SHR
 			C[31:0] = A >> B;
 			end
-		if (opperation_signal == 4'b0101) begin //SHL
+		if (opperation_signal == 5'b01010) begin //SHL
 			C[31:0] = A << B;
 			end
-		if (opperation_signal == 4'b0110) begin //ROR
-			//C[31:0] = {A[B -: 0], A[(B+1) +: 31]}; //
-			C[31:0] = A << B;
+		if (opperation_signal == 5'b01011) begin //ROR
+			//rotateCount = 0;
+			C[31:0] = A;
+			for(i = 0; i<32; i=i+1) begin
+				if(i<B) begin
+				//rotateCount = rotateCount + 1;
+					C = {C[0] , C[31:1]};
+					end
+				end
 			end
-		if (opperation_signal == 4'b0111) begin //ROL
-			//C[31:0] = {A[(31-B-1) -: 0], A[(31-B) +: 31]};
-			C[31:0] = A << B;
+			//C = {C[30:0] , C[31]};
+			
+		if (opperation_signal == 5'b01100) begin //ROL
+			rotateCount = 0;
+			C[31:0] = A;
+			while((B > rotateCount) && (rotateCount < 32)) begin
+				C = {C[30:0] , C[31]};
+				rotateCount = rotateCount + 1;
+				end
 			end
-		if (opperation_signal == 4'b1000) begin //AND
+		if (opperation_signal == 5'b00111) begin //AND
 			C[31:0] = A & B;
 			end
-		if (opperation_signal == 4'b1001) begin //OR
+		if (opperation_signal == 5'b01000) begin //OR
 			C[31:0] = A | B;
 			end
-		if (opperation_signal == 4'b1010) begin //NEG
+		if (opperation_signal == 5'b10010) begin //NEG
 			C[31:0] = !A + 1;
 			end
-		if (opperation_signal == 4'b1011) begin //NOT
+		if (opperation_signal == 5'b1011) begin //NOT
 			C[31:0] = !A;
 			end	
-		if (opperation_signal == 4'b1100) begin //Inc_PC
+		if (opperation_signal == 5'b11111) begin //Inc_PC
 			C[31:0] = A + 1;
 			end
-	//evaluate opperation signal to select an opperation
-	
-	
 	end
 endmodule
 
-//http://stackoverflow.com/questions/18067571/indexing-vectors-and-arrays-with
-
-/*
-module ROR(in, shift, res, enable);
-	input enable;
-	input[31:0] in, shift;
-	output[31:0] res;
-	reg[31:0] res, tmp;
-	// A[5:0], A[31:6]
-	always @(enable) begin;
-		tmp = shift+1;
-		res = {in[shift -: 0] , in[tmp +: 31]};
-	end
-endmodule
-
-module ROL(in, shift, res, enable);
-	input enable;
-	input[31:0] in, shift;
-	output[31:0] res;
-	reg[31:0] res, tmp, tmp2;
-	// A[26:0], a[31:27]	
-	always @(enable) begin;
-		tmp = 31 - shift;
-		tmp2 = tmp - 1;
-		res = {in[tmp2 -: 0] , in[tmp +: 31]};   C = {A[(31-B-1) -: 0], A[(31-B) +: 31]}
-	end
-endmodule
-*/
-
-
-module Mux32to1(busMuxOut, BusMuxIn_R0, BusMuxIn_R1, BusMuxIn_R2, BusMuxIn_R3,
-	BusMuxIn_R4, BusMuxIn_R5, BusMuxIn_R6, BusMuxIn_R7, BusMuxIn_R8,
-	BusMuxIn_R9, BusMuxIn_R10, BusMuxIn_R11, BusMuxIn_R12,
-	BusMuxIn_R13, BusMuxIn_R14, BusMuxIn_R15,
-	BusMuxIn_HI, BusMuxIn_LO, BusMuxIn_Zhi, BusMuxIn_Zlo,
-	BusMuxIn_PC, BusMuxIn_MDR, BusMuxIn_InPort, C_sign_extended,R0out,
-	R1out, R2out, R3out, R4out, R5out, R6out, R7out,
-	R8out, R9out, R10out, R11out, R12out, R13out, R14out, R15out,
-	HIout, LOout, Zhiout, Zloout, PCout, MDRout, InPortout, Cout);
-	
-	input [31:0] BusMuxIn_R0, BusMuxIn_R1, BusMuxIn_R2, BusMuxIn_R3,
-		BusMuxIn_R4, BusMuxIn_R5, BusMuxIn_R6, BusMuxIn_R7, BusMuxIn_R8,
-		BusMuxIn_R9, BusMuxIn_R10, BusMuxIn_R11, BusMuxIn_R12,
-		BusMuxIn_R13, BusMuxIn_R14, BusMuxIn_R15,
-		BusMuxIn_HI, BusMuxIn_LO, BusMuxIn_Zhi, BusMuxIn_Zlo,
-		BusMuxIn_PC, BusMuxIn_MDR, BusMuxIn_InPort, C_sign_extended;
-	input R0out, R1out, R2out, R3out, R4out, R5out, R6out, R7out, R8out, R9out, R10out, R11out, 
-		R12out, R13out, R14out, R15out, HIout, LOout, Zhiout, Zloout, PCout, MDRout, InPortout, Cout; 
+module Bus_Write_Mux(busMuxOut, Bus_enable, in_0, in_1, in_2, in_3, in_4, in_5, in_6, in_7, in_8, 
+		in_9, in_10, in_11, in_12, in_13, in_14, in_15, in_16, in_17, in_18, in_19, in_20, in_21, in_22, in_23);
+	input[31:0] Bus_enable, in_0, in_1, in_2, in_3, in_4, in_5, in_6, in_7, in_8, 
+		in_9, in_10, in_11, in_12, in_13, in_14, in_15, in_16, in_17, in_18, in_19, in_20, in_21, in_22, in_23;
 	output[31:0] busMuxOut;
-	reg[31:0] busMuxOut;
-
-	wire[31:0] registers;
-	assign registers[0] = BusMuxIn_R0;
-	assign registers[1] = BusMuxIn_R1;
-	assign registers[2] = BusMuxIn_R2;
-	assign registers[3] = BusMuxIn_R3;
-	assign registers[4] = BusMuxIn_R4;
-	assign registers[5] = BusMuxIn_R5;
-	assign registers[6] = BusMuxIn_R6;
-	assign registers[7] = BusMuxIn_R7;
-	assign registers[8] = BusMuxIn_R8;
-	assign registers[9] = BusMuxIn_R9;
-	assign registers[10] = BusMuxIn_R10;
-	assign registers[11] = BusMuxIn_R11;
-	assign registers[12] = BusMuxIn_R12;
-	assign registers[13] = BusMuxIn_R13;
-	assign registers[14] = BusMuxIn_R14;
-	assign registers[15] = BusMuxIn_R15;
-	assign registers[16] = BusMuxIn_HI;
-	assign registers[17] = BusMuxIn_LO;
-	assign registers[18] = BusMuxIn_Zhi;
-	assign registers[19] = BusMuxIn_Zlo;
-	assign registers[20] = BusMuxIn_PC;
-	assign registers[21] = BusMuxIn_MDR;
-	assign registers[22] = BusMuxIn_InPort;
-	assign registers[23] = C_sign_extended;
-	
-	wire[31:0] signals;
-	assign signals[0] = R0out;
-	assign signals[1] = R1out;
-	assign signals[2] = R2out;
-	assign signals[3] = R3out;
-	assign signals[4] = R4out;
-	assign signals[5] = R5out;
-	assign signals[6] = R6out;
-	assign signals[7] = R7out;
-	assign signals[8] = R8out;
-	assign signals[9] = R9out;
-	assign signals[10] = R10out;
-	assign signals[11] = R11out;
-	assign signals[12] = R12out;
-	assign signals[13] = R13out;
-	assign signals[14] = R14out;
-	assign signals[15] = R15out;
-	assign signals[16] = HIout;
-	assign signals[17] = LOout;
-	assign signals[18] = Zhiout;
-	assign signals[19] = Zloout;
-	assign signals[20] = PCout;
-	assign signals[21] = MDRout;
-	assign signals[22] = InPortout;
-	assign signals[23] = Cout;
-
-	reg [4:0] sel;
-
-	always @ (signals)begin
-		sel = 5'b00000;
-		if (signals == 32'h00000002) begin
-			sel = 5'b00001; 
-		end
-		if (signals == 32'h00000004) begin
-			sel = 5'b00010; 
-		end
-		if (signals == 32'h00000008) begin
-			sel = 5'b00011; 
-		end
-		if (signals == 32'h00000010) begin
-			sel = 5'b00100; 
-		end
-		if (signals == 32'h00000020) begin
-			sel = 5'b00101; 
-		end
-		if (signals == 32'h00000040) begin
-			sel = 5'b00110; 
-		end
-		if (signals == 32'h00000080) begin
-			sel = 5'b00111; 
-		end
-		if (signals == 32'h00000100) begin
-			sel = 5'b01000; 
-		end
-		if (signals == 32'h00000200) begin
-			sel = 5'b01001; 
-		end
-		if (signals == 32'h00000400) begin
-			sel = 5'b01010; 
-		end
-		if (signals == 32'h00000800) begin
-			sel = 5'b01011; 
-		end
-		if (signals == 32'h00001000) begin
-			sel = 5'b01100; 
-		end
-		if (signals == 32'h00002000) begin
-			sel = 5'b01101; 
-		end
-		if (signals == 32'h00004000) begin
-			sel = 5'b01110; 
-		end
-		if (signals == 32'h00008000) begin
-			sel = 5'b01111; 
-		end
-		if (signals == 32'h00010000) begin
-			sel = 5'b10000; 
-		end
-		if (signals == 32'h00020000) begin
-			sel = 5'b10001; 
-		end
-		if (signals == 32'h00040000) begin
-			sel = 5'b10010; 
-		end
-		if (signals == 32'h00080000) begin
-			sel = 5'b10011; 
-		end
-		if (signals == 32'h00100000) begin
-			sel = 5'b10100; 
-		end
-		if (signals == 32'h00200000) begin
-			sel = 5'b10101; 
-		end
-		if (signals == 32'h00400000) begin
-			sel = 5'b10110; 
-		end
-		if (signals == 32'h00800000) begin
-			sel = 5'b10111; 
-		end
-		if (signals == 32'h01000000) begin
-			sel = 5'b11000; 
-		end
-	end
-	
-	always @(sel or registers) begin
-		if (sel == 5'b00000) begin
-			busMuxOut = registers[0]; 
-		end
-		if (sel == 5'b00001) begin
-			busMuxOut = registers[1]; 
-		end
-		if (sel == 5'b00010) begin
-			busMuxOut = registers[2]; 
-		end
-		if (sel == 5'b00011) begin
-			busMuxOut = registers[3]; 
-		end
-		if (sel == 5'b00100) begin
-			busMuxOut = registers[4]; 
-		end
-		if (sel == 5'b00101) begin
-			busMuxOut = registers[5]; 
-		end
-		if (sel == 5'b00111) begin
-			busMuxOut = registers[6]; 
-		end
-		if (sel == 5'b01000) begin
-			busMuxOut = registers[7]; 
-		end
-		if (sel == 5'b01001) begin
-			busMuxOut = registers[8]; 
-		end
-		if (sel == 5'b01010) begin
-			busMuxOut = registers[9]; 
-		end
-		if (sel == 5'b01011) begin
-			busMuxOut = registers[10]; 
-		end
-		if (sel == 5'b01100) begin
-			busMuxOut = registers[11]; 
-		end
-		if (sel == 5'b01101) begin
-			busMuxOut = registers[12]; 
-		end
-		if (sel == 5'b01110) begin
-			busMuxOut = registers[13]; 
-		end
-		if (sel == 5'b01111) begin
-			busMuxOut = registers[14]; 
-		end
-		if (sel == 5'b10000) begin
-			busMuxOut = registers[15]; 
-		end
-		if (sel == 5'b10001) begin
-			busMuxOut = registers[16]; 
-		end
-		if (sel == 5'b10010) begin
-			busMuxOut = registers[17]; 
-		end
-		if (sel == 5'b10011) begin
-			busMuxOut = registers[18]; 
-		end
-		if (sel == 5'b10100) begin
-			busMuxOut = registers[19]; 
-		end
-		if (sel == 5'b10101) begin
-			busMuxOut = registers[20]; 
-		end
-		if (sel == 5'b10110) begin
-			busMuxOut = registers[21]; 
-		end
-		if (sel == 5'b10111) begin
-			busMuxOut = registers[22]; 
-		end
-		if (sel == 5'b11000) begin
-			busMuxOut = registers[23]; 
-		end
-	end
+	wire[4:0] Encoded_Signals;
+	Encoder32_5 bus_encoder(Bus_enable, Encoded_Signals);
+	mux24 select_input(busMuxOut, Encoded_Signals, in_0, in_1, in_2, in_3, in_4, in_5, in_6, in_7, in_8, 
+		in_9, in_10, in_11, in_12, in_13, in_14, in_15, in_16, in_17, in_18, in_19, in_20, in_21, in_22, in_23);
 endmodule	
 
-module MDMux_in(BusMuxOut, Mdata_in, Mem_read, MDMux_out); 
-	input Mem_read;
-	input[31:0] BusMuxOut, Mdata_in;
-	output[31:0] MDMux_out;
-	reg[31:0] MDMux_out;
+module Encoder32_5(out, in);
+	input[31:0] in;
+	output[4:0] out;
+	reg[4:0] out;
+
+	always @ (*)begin
+		if (in == 32'h00000002) begin
+			out = 5'b00001; 
+		end
+		if (in == 32'h00000004) begin
+			out = 5'b00010; 
+		end
+		if (in == 32'h00000008) begin
+			out = 5'b00011; 
+		end
+		if (in == 32'h00000010) begin
+			out = 5'b00100; 
+		end
+		if (in == 32'h00000020) begin
+			out = 5'b00101; 
+		end
+		if (in == 32'h00000040) begin
+			out = 5'b00110; 
+		end
+		if (in == 32'h00000080) begin
+			out = 5'b00111; 
+		end
+		if (in == 32'h00000100) begin
+			out = 5'b01000; 
+		end
+		if (in == 32'h00000200) begin
+			out = 5'b01001; 
+		end
+		if (in == 32'h00000400) begin
+			out = 5'b01010; 
+		end
+		if (in == 32'h00000800) begin
+			out = 5'b01011; 
+		end
+		if (in == 32'h00001000) begin
+			out = 5'b01100; 
+		end
+		if (in == 32'h00002000) begin
+			out = 5'b01101; 
+		end
+		if (in == 32'h00004000) begin
+			out = 5'b01110; 
+		end
+		if (in == 32'h00008000) begin
+			out = 5'b01111; 
+		end
+		if (in == 32'h00010000) begin
+			out = 5'b10000; 
+		end
+		if (in == 32'h00020000) begin
+			out = 5'b10001; 
+		end
+		if (in == 32'h00040000) begin
+			out = 5'b10010; 
+		end
+		if (in == 32'h00080000) begin
+			out = 5'b10011; 
+		end
+		if (in == 32'h00100000) begin
+			out = 5'b10100; 
+		end
+		if (in == 32'h00200000) begin
+			out = 5'b10101; 
+		end
+		if (in == 32'h00400000) begin
+			out = 5'b10110; 
+		end
+		if (in == 32'h00800000) begin
+			out = 5'b10111; 
+		end
+		if (in == 32'h01000000) begin
+			out = 5'b11000; 
+		end
+	end
+endmodule
+	
+module  mux24(out, select, in_0, in_1, in_2 ,in_3, in_4,in_5, in_6, in_7, in_8, in_9, in_10, in_11, in_12, in_13, in_14, in_15, in_16,
+	in_17, in_18, in_19, in_20, in_21, in_22, in_23);
+	input[31:0] in_0, in_1, in_2 ,in_3, in_4,in_5, in_6, in_7, in_8, in_9, in_10, in_11, in_12, in_13, in_14, in_15, in_16,
+		in_17, in_18, in_19, in_20, in_21, in_22, in_23;
+	input[5:0] select;
+	output[31:0] out;
+	reg[31:0] out;
 	always begin
-		if(Mem_read) begin
-			MDMux_out = Mdata_in;
-			end
-		else begin
-			MDMux_out = BusMuxOut;
-			end
+		if (select == 5'b00000) begin
+			out = in_0; 
+		end
+		if (select == 5'b00001) begin
+			out = in_1; 
+		end
+		if (select == 5'b00010) begin
+			out = in_2; 
+		end
+		if (select == 5'b00011) begin
+			out = in_3; 
+		end
+		if (select == 5'b00100) begin
+			out = in_4; 
+		end
+		if (select == 5'b00101) begin
+			out = in_5; 
+		end
+		if (select == 5'b00110) begin
+			out = in_6; 
+		end
+		if (select == 5'b00111) begin
+			out = in_7; 
+		end
+		if (select == 5'b01000) begin
+			out = in_8; 
+		end
+		if (select == 5'b01001) begin
+			out = in_9; 
+		end
+		if (select == 5'b01010) begin
+			out = in_10; 
+		end
+		if (select == 5'b01011) begin
+			out = in_11; 
+		end
+		if (select == 5'b01100) begin
+			out = in_12; 
+		end
+		if (select == 5'b01101) begin
+			out = in_13; 
+		end
+		if (select == 5'b01110) begin
+			out = in_14;
+		end
+		if (select == 5'b01111) begin
+			out = in_15;
+		end
+		if (select == 5'b10000) begin
+			out = in_16; 
+		end
+		if (select == 5'b10001) begin
+			out = in_17; 
+		end
+		if (select == 5'b10010) begin
+			out = in_17; 
+		end
+		if (select == 5'b10011) begin
+			out = in_19; 
+		end
+		if (select == 5'b10100) begin
+			out = in_20; 
+		end
+		if (select == 5'b10101) begin
+			out = in_21; 
+		end
+		if (select == 5'b10110) begin
+			out = in_22; 
+		end
+		if (select == 5'b10111) begin
+			out = in_23; 
+		end
 	end
 endmodule
 
-module MDMux_out(MDR_data, Mem_write, BusMuxIn_MDR, Mdata_out); 
-	input Mem_write;
-	input[31:0] MDR_data;
-	output[31:0] BusMuxIn_MDR, Mdata_out;
-	reg[31:0] BusMuxIn_MDR, Mdata_out;
-	always begin
-		if(Mem_write) begin
-			Mdata_out = MDR_data;
-			end
-		else begin
-			BusMuxIn_MDR = MDR_data;
-			end
-	end
-endmodule
 
 module clock(clk);
 	output clk;
@@ -497,10 +383,9 @@ module clock(clk);
 	end
 endmodule
 
-
-module reg32(Rout, clr, clk, write_enable, BusMuxOut);
+module reg32(Rout, clr, clk, write_enable, write_value);
 	input clr,clk, write_enable;
-	input [31:0] BusMuxOut;
+	input [31:0] write_value;
 	output [31:0]Rout;
 	reg[31:0] Rout;
 
@@ -509,20 +394,74 @@ module reg32(Rout, clr, clk, write_enable, BusMuxOut);
 			Rout = 32'h00000000;
 			end
 		if(write_enable) begin
-			Rout = BusMuxOut;
+			Rout = write_value;
 			end
 	end
 endmodule
+
+module reg32_R0(Rout, clr, clk, BA_out, write_enable, write_value);
+	input clr,clk, write_enable, BA_out;
+	input [31:0] write_value;
+	output [31:0]Rout;
+	reg[31:0] Rout;
+
+	always @ (posedge clk)begin
+		if(clr) begin
+			Rout = 32'h00000000;
+			end
+		if(write_enable) begin
+			Rout = write_value & (!BA_out);
+			end
+	end
+endmodule
+
+
+module reg32_MDR(Memory_output, Bus_output,  clr, clk, MDR_write_enable, Memory_write_enable, Memory_read_enable, Bus_input, Memory_input);
+	input clr,clk, Memory_write_enable, Memory_read_enable, MDR_write_enable;
+	input [31:0] Bus_input, Memory_input;
+	output [31:0]Memory_output, Bus_output;
+	reg[31:0] Rout;
+	wire[31:0] register;
+
+	MDMux_in input_select(Bus_input, Memory_input, Memory_read_enable, register);
+	MDMux_out output_select(Rout, Memory_write_enable, Bus_output, Memory_output);
+
+	always @ (posedge clk)begin
+		if(clr) begin
+			Rout = 32'h00000000;
+			end
+		if(MDR_write_enable) begin
+			Rout = register;
+			end
+	end
+endmodule
+
+
+module MDMux_in(Bus_data, Mdata_in, Mem_read_enable, MDMux_out); //BusMuxOut
+	input Mem_read_enable;
+	input[31:0] Bus_data, Mdata_in;
+	output[31:0] MDMux_out;
+	assign MDMux_out = (Mem_read_enable & Mdata_in) | (!Mem_read_enable & Bus_data);
+endmodule
+
+module MDMux_out(MDR_data, Mem_write_enable, BusData_out, Mdata_out); 
+	input Mem_write_enable;
+	input[31:0] MDR_data;
+	output[31:0] BusData_out, Mdata_out;
+	assign Mdata_out = MDR_data & Mem_write_enable;
+	assign BusData_out = MDR_data & (!Mem_write_enable);
+endmodule
+
 	
-module reg64(Rout_hi, Rout_low, clr, clk, input_value);
+module reg64(Rout_hi, Rout_low, clr, clk, write_value);
 	input clr,clk;
-	input [63:0] input_value;
+	input [63:0] write_value;
 	output [31:0]Rout_hi, Rout_low;
 	reg[31:0] Rout_hi, Rout_low;
 
 	always @ (posedge clk) begin
-		Rout_hi = input_value[63:32];
-		Rout_low = input_value[31:0];
+		Rout_hi = write_value[63:32];
+		Rout_low = write_value[31:0];
 		if(clr) begin
 			Rout_hi = 0;
 			Rout_low = 0;
