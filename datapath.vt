@@ -1,0 +1,114 @@
+// Copyright (C) 1991-2013 Altera Corporation
+// Your use of Altera Corporation's design tools, logic functions 
+// and other software and tools, and its AMPP partner logic 
+// functions, and any output files from any of the foregoing 
+// (including device programming or simulation files), and any 
+// associated documentation or information are expressly subject 
+// to the terms and conditions of the Altera Program License 
+// Subscription Agreement, Altera MegaCore Function License 
+// Agreement, or other applicable license agreement, including, 
+// without limitation, that your use is for the sole purpose of 
+// programming logic devices manufactured by Altera and sold by 
+// Altera or its authorized distributors.  Please refer to the 
+// applicable agreement for further details.
+
+// *****************************************************************************
+// This file contains a Verilog test bench template that is freely editable to  
+// suit user's needs .Comments are provided in each section to help the user    
+// fill out necessary details.                                                  
+// *****************************************************************************
+// Generated on "03/11/2017 22:42:16"
+                                                                                
+// Verilog Test Bench template for design : datapath
+// 
+// Simulation tool : ModelSim-Altera (Verilog)
+// 
+
+`timescale 1 ps/ 1 ps
+module datapath_vlg_tst();
+// constants                                           
+// general purpose registers
+reg eachvec;
+// test vector input registers
+reg [3:0] ALU_signals;
+reg [31:0] IOdata_in;
+reg [31:0] Mdata_in;
+reg [26:0] read_signals;
+reg reset;
+reg [26:0] write_signals;
+// wires                                               
+wire [31:0]  IOdata_out;
+wire [31:0]  Maddress_out;
+wire [31:0]  Mdata_out;
+wire clk;
+
+// assign statements (if any)                          
+datapath i1 (
+// port map - connection between master ports and signals/registers   
+	.ALU_signals(ALU_signals),
+	.IOdata_in(IOdata_in),
+	.IOdata_out(IOdata_out),
+	.Maddress_out(Maddress_out),
+	.Mdata_in(Mdata_in),
+	.Mdata_out(Mdata_out),
+	.clk(clk),
+	.read_signals(read_signals),
+	.reset(reset),
+	.write_signals(write_signals)
+);
+initial                                                
+begin                                                  
+// code that executes only once                        
+// insert code here --> begin 
+
+				//init
+			read_signals <= 26'b00000000000000000000000000;
+			write_signals <= 26'b00000000000000000000000000;
+			ALU_signals <= 4'b0000;
+			Mdata_in <= 32'h00000000;
+			IOdata_in <= 32'h00000000;
+			reset <= 0;
+			
+			@(posedge clk) 
+				fork
+					read_signals <=27'b0000000_00000_00000_00000_00000;
+					write_signals <= 27'b0000000_00000_00000_00000_00000;
+					ALU_signals <= 4'b1111; //nop
+					Mdata_in <= 32'h00000000;
+					IOdata_in <= 32'h00000000;
+				join
+			
+					
+			//load R1 with 6
+			@(posedge clk) 
+				fork //T0
+					read_signals <= 27'b1000000_00000_00000_00000_00000; //mem_read
+					write_signals <= 27'b0000000_00000_00000_00000_00000;
+					Mdata_in <= 32'h00000006; //6
+				join
+		
+
+			@(posedge clk) 
+				fork //T1
+					read_signals <= 27'b0000010_00000_00000_00000_00000; //MDR_en
+					write_signals <= 27'b0000000_00000_00000_00000_00010; //R1_write
+				join
+
+
+                         
+                                                       
+// --> end                                             
+$display("Running testbench");                       
+end                                                    
+always                                                 
+// optional sensitivity list                           
+// @(event1 or event2 or .... eventn)                  
+begin                                                  
+// code executes for every event on sensitivity list   
+// insert code here --> begin                          
+                                                       
+@eachvec;                                              
+// --> end                                             
+end                                                    
+endmodule
+
