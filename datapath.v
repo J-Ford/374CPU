@@ -1,11 +1,8 @@
-module Datapath(IOdata_out, Maddress_out, Mdata_out, clk, Mdata_in, IOdata_in, reset, mem_write, mem_read, G_ra, G_rb, G_rc, R_in,
-	R_out, BA_out, write_signals, read_signals, ALU_signals);
-	input[31:0] Mdata_in, IOdata_in;
+module Datapath(clk, reset, mem_write_enable, mem_read_enable, G_ra, G_rb, G_rc, R_in, R_out, BA_out,CON_en, write_signals, read_signals, ALU_signals);
 	input[9:0] write_signals, read_signals;
 	input[4:0] ALU_signals;
-	input reset, mem_write, mem_read, G_ra, G_rb, G_rc, R_in, R_out, BA_out;
-	output[31:0] IOdata_out, Maddress_out, Mdata_out;
-	output clk;
+	input reset, mem_write_enable, mem_read_enable, G_ra, G_rb, G_rc, R_in, R_out, BA_out, CON_en;
+	input clk;
 
 
 	//Register write enable wires
@@ -17,25 +14,28 @@ module Datapath(IOdata_out, Maddress_out, Mdata_out, clk, Mdata_in, IOdata_in, r
 		R11_output, R12_output, R13_output, R14_output, R15_output, HI_output, LO_output, Zhi_output, Zlo_output, PC_output, MDR_output, InPort_output, C_sign_extended; 
 
 	//other wires
-	wire clk, Mem_read, Mem_write;
-	wire[31:0] Bus, MDMux_out, MDR_data, ALU_Y_input, Bus_enable, BusMuxIn[31:0];
+	wire clk, Mem_read_enable, Mem_write_enable, Mem_RW, CON_out; //CON OUT GOES NOWHERE 
+	wire[31:0] Bus, MDMux_out, MDR_data, ALU_Y_input, Bus_enable, CLU_in, Data_to_RAM, Data_from_RAM;
 	wire[63:0] ALU_output; 
-	wire[31:0] CLU_in; //goes to CLU
+	wire[8:0] Mem_address;
+	
+	//initialise CON
+	CON_FF CON(CON_out, CLU_in, Bus, CON_en);
 
-	//initialise clock
-	clock synchronous_clock(clk);
-
-	//initialise CLU
+	//initialize CLU
 	CLU control_unit(G_ra, G_rb, G_rc, R_in, R_out, BA_out, CLU_in, GPR_read_signals, GPR_write_enable, C_sign_extended);
 	
-	//initialise ALU
-	ALU logic_unit(Bus, ALU_Y_input, ALU_output, ALU_signals);
+	//initialize ALU
+	ALU logic_unit(ALU_output, Bus, ALU_Y_input, C_sign_extended, ALU_signals);
 	
-	//initialise bus multiplexer
+	//initialize RAM
+	RAM_1_PORT RAM(Mem_address, clk, Data_to_RAM, Mem_RW, Data_from_RAM);
+	
+	//initialize bus multiplexer
 	Bus_Write_Mux Bus_Mux(Bus, Bus_enable, R0_output, R1_output, R2_output, R3_output, R4_output, R5_output, R6_output, R7_output, R8_output, R9_output, R10_output, 
 		R11_output, R12_output, R13_output, R14_output, R15_output, HI_output, LO_output, Zhi_output, Zlo_output, PC_output, MDR_output, InPort_output, C_sign_extended);
 	
-	//initialise registers	
+	//initialize registers	
 	reg32_R0 R0(R0_output, reset, clk, BA_out, GPR_write_enable[0], Bus);
 	reg32 R1(R1_output, reset, clk, GPR_write_enable[1], Bus);
 	reg32 R2(R2_output, reset, clk, GPR_write_enable[2], Bus);
@@ -57,9 +57,9 @@ module Datapath(IOdata_out, Maddress_out, Mdata_out, clk, Mdata_in, IOdata_in, r
 	reg32 LO(LO_output, reset, clk, LO_write_enable, Bus);
 	reg32 PC(PC_output, reset, clk, PC_write_enable, Bus);
 
-	reg32_MDR MDR(Mdata_out, MDR_output, reset, clk, MDR_write_enable, Mem_write, Mem_read, Bus, Mdata_in); //change Mem_write to Mem_write_enable
+	reg32_MDR MDR(Data_to_RAM, MDR_output, Mem_RW, reset, clk, MDR_write_enable, Mem_write_enable, Mem_read_enable, Bus, Data_from_RAM); //change Mem_write to Mem_write_enable
 
-	reg32 MAR(Maddress_out, reset, clk, MAR_write_enable, Bus);
+	reg32_MAR MAR(Mem_address, reset, clk, MAR_write_enable, Bus);
 	reg32 InPort(InPort_output, reset, clk, InPort_write_enable, IOdata_in); //*note always accept new data from IO 
 	reg32 OutPort(IOdata_out, reset, clk, OutPort_write_enable, Bus);//*
 	reg32 IR(CLU_in, reset, clk, IR_write_enable, Bus);
@@ -92,7 +92,40 @@ module CLU(G_ra, G_rb, G_rc, R_in, R_out, BA_out, IR, read_signals, write_signal
 	output[31:0] C_sign_extended;
 	
 	Select_Decode SD(G_ra, G_rb, G_rc, R_in, R_out, BA_out, IR[26:23], IR[22:19], IR[18:15], read_signals, write_signals);
+	sign_extend SE(C_sign_extended, IR[18:0]);
+endmodule
+
+module CON_FF(out, IR, Bus_data, CON_en);
+	input[31:0] IR, Bus_data;
+	input CON_en;
+	output out;
+	reg out
+	wire eq_in, ne_in, gte_in, lt_in, or_out;
+	wire[3:0] decoder_output;
+	decoder2_4 IR_decoder(decoder_output, IR[1:0]);
+	assign eq_in = ~| Bus_data;
+	assign ne_in = !eq_in;
+	assign gte_in = Bus_data[31];
+	assign lt_in = !gte_in;
+	assign or_out = (decoder_output[0] & eq_in) | (decoder_output[1] & ne_in) | (decoder_output[2] & gte_in) | (decoder_output[3] & lt_in) ;
 	
+	always begin
+		out = or_out & CON_en;
+endmodule
+
+module decoder2_4(out, in);
+	input[1:0] in;
+	output[3:0] out;
+	assign out[3] = in[1] & in[0]
+	assign out[2] = in[1] & !(in[0])
+	assign out[1] = !(in[1]) & in[0]
+	assign out[0] = !(in[1]) & !(in[0])
+endmodule
+
+module sign_extend(value_sign_extend, value);
+	input[18:0] value;
+	output[31:0] value_sign_extend;
+	assign value_sign_extend = {value[18],value[18],value[18],value[18],value[18],value[18],value[18],value[18],value[18],value[18],value[18],value[18],value[18],value[18], value[17:0]}
 endmodule
 	
 module Select_Decode(G_ra, G_rb, G_rc, R_in, R_out, BA_out, Ra, Rb, Rc, read_signals, write_signals);
@@ -108,8 +141,6 @@ module Select_Decode(G_ra, G_rb, G_rc, R_in, R_out, BA_out, Ra, Rb, Rc, read_sig
 	assign write_signals = (BA_out & R_out) & decoder_output;
 	
 endmodule
-	
-	
 		
 module decoder_4_16 (in, out);
 	input[3:0] in;
@@ -132,8 +163,8 @@ module decoder_4_16 (in, out);
 	assign out[15] = (in[3]) & (in[2]) & (in[1]) & (in[0]);
 endmodule
 
-module ALU(A, B, C, opperation_signal);
-	input[31:0] A, B;
+module ALU(C, A, B, immediate, opperation_signal);
+	input[31:0] A, B, immediate;
 	input[4:0] opperation_signal;
 	output[63:0] C;
 	reg[63:0] C;
@@ -186,8 +217,17 @@ module ALU(A, B, C, opperation_signal);
 		if (opperation_signal == 5'b10010) begin //NEG
 			C[31:0] = !A + 1;
 			end
-		if (opperation_signal == 5'b1011) begin //NOT
+		if (opperation_signal == 5'b10011) begin //NOT
 			C[31:0] = !A;
+			end	
+		if (opperation_signal == 5'b01110) begin //ANDI
+			C[31:0] = A & immediate;
+			end	
+		if (opperation_signal == 5'b01111) begin //ORI
+			C[31:0] = A | immediate;
+			end	
+		if (opperation_signal == 5'b01101) begin //ADDI
+			C[31:0] = A + immediate;
 			end	
 		if (opperation_signal == 5'b11111) begin //Inc_PC
 			C[31:0] = A + 1;
@@ -370,19 +410,6 @@ module  mux24(out, select, in_0, in_1, in_2 ,in_3, in_4,in_5, in_6, in_7, in_8, 
 	end
 endmodule
 
-
-module clock(clk);
-	output clk;
-	reg clk;
-	initial begin
-		clk = 0;
-	end
-	always begin
-		#5 clk = 1;
-		#5 clk = 0;
-	end
-endmodule
-
 module reg32(Rout, clr, clk, write_enable, write_value);
 	input clr,clk, write_enable;
 	input [31:0] write_value;
@@ -416,17 +443,20 @@ module reg32_R0(Rout, clr, clk, BA_out, write_enable, write_value);
 endmodule
 
 
-module reg32_MDR(Memory_output, Bus_output,  clr, clk, MDR_write_enable, Memory_write_enable, Memory_read_enable, Bus_input, Memory_input);
+module reg32_MDR(Memory_output, Bus_output, Mem_RW, clr, clk, MDR_write_enable, Memory_write_enable, Memory_read_enable, Bus_input, Memory_input);
 	input clr,clk, Memory_write_enable, Memory_read_enable, MDR_write_enable;
 	input [31:0] Bus_input, Memory_input;
 	output [31:0]Memory_output, Bus_output;
+	output Mem_RW;
+	reg Mem_RW;
 	reg[31:0] Rout;
 	wire[31:0] register;
 
 	MDMux_in input_select(Bus_input, Memory_input, Memory_read_enable, register);
 	MDMux_out output_select(Rout, Memory_write_enable, Bus_output, Memory_output);
-
+	
 	always @ (posedge clk)begin
+	Mem_RW = MDR_write_enable & (!Memory_read_enable);
 		if(clr) begin
 			Rout = 32'h00000000;
 			end
@@ -436,6 +466,22 @@ module reg32_MDR(Memory_output, Bus_output,  clr, clk, MDR_write_enable, Memory_
 	end
 endmodule
 
+module reg32_MAR(Rout, clr, clk, write_enable, write_value);
+	input clr,clk, write_enable;
+	input [31:0] write_value;
+	output [8:0] Rout;
+	reg[31:0] value;
+	assign Rout = value[8:0];
+
+	always @ (posedge clk)begin
+		if(clr) begin
+			value = 32'h00000000;
+			end
+		if(write_enable) begin
+			value = write_value;
+			end
+	end
+endmodule
 
 module MDMux_in(Bus_data, Mdata_in, Mem_read_enable, MDMux_out); //BusMuxOut
 	input Mem_read_enable;
