@@ -185,14 +185,14 @@ begin
 		Mdata_in = 32'h00001111;
 		Mem_read = 1;
 		MDR_write_enable = 1;
-		#9
+		#15
 		Mem_read = 0;
 		MDR_write_enable = 0;		
 		
 	@ (negedge clk);	
 		Bus_select_MDR = 1;
 		R1_write_enable = 1;
-		#9
+		#15
 		Bus_select_MDR = 0;
 		R1_write_enable = 0;		
 
