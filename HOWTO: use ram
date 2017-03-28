@@ -17,3 +17,14 @@ Changes:
     Click browse, select to RAM_Init.mif
     
 You're Done! Yay!
+
+ENTERING INSTRUCTIONS INTO MEMORY
+  binary to decmal converter: http://www.binaryconvert.com/convert_unsigned_int.html?hexadecimal=00080000
+  look up binary instruction from CPU project main handout, 
+  fill in source + destination regs
+  paste binary instruction required into converter, remove underscores, spam 0 until it stops accepting
+  click convert to binary
+  add imediate to conversion using calculator
+  paste final result into correct memory address,
+  first instruction starts at 0, sucsessive instructions occupy sucsessive mem places. 
+  this is why compilers :(
