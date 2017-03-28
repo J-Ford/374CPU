@@ -26,5 +26,5 @@ ENTERING INSTRUCTIONS INTO MEMORY
   click convert to binary
   add imediate to conversion using calculator
   paste final result into correct memory address,
-  first instruction starts at 1(!), sucsessive instructions occupy sucsessive mem places. 
-  this is why compilers :(
+  first instruction starts at 0, sucsessive instructions occupy sucsessive mem places. 
+  this is why compilers exist:(
