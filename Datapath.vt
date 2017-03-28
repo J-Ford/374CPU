@@ -1,0 +1,239 @@
+// Copyright (C) 1991-2013 Altera Corporation
+// Your use of Altera Corporation's design tools, logic functions 
+// and other software and tools, and its AMPP partner logic 
+// functions, and any output files from any of the foregoing 
+// (including device programming or simulation files), and any 
+// associated documentation or information are expressly subject 
+// to the terms and conditions of the Altera Program License 
+// Subscription Agreement, Altera MegaCore Function License 
+// Agreement, or other applicable license agreement, including, 
+// without limitation, that your use is for the sole purpose of 
+// programming logic devices manufactured by Altera and sold by 
+// Altera or its authorized distributors.  Please refer to the 
+// applicable agreement for further details.
+
+// *****************************************************************************
+// This file contains a Verilog test bench template that is freely editable to  
+// suit user's needs .Comments are provided in each section to help the user    
+// fill out necessary details.                                                  
+// *****************************************************************************
+// Generated on "03/28/2017 06:09:55"
+                                                                                
+// Verilog Test Bench template for design : Datapath
+// 
+// Simulation tool : ModelSim-Altera (Verilog)
+// 
+
+`timescale 1 ps/ 1 ps
+module Datapath_vlg_tst();
+// constants                                           
+// general purpose registers
+reg eachvec;
+// test vector input registers
+reg [4:0] ALU_signals;
+reg BA_out;
+reg CON_en;
+reg C_en;
+reg G_ra;
+reg G_rb;
+reg G_rc;
+reg HI_en;
+reg HI_write_enable;
+reg IR_write_enable;
+reg InPort_en;
+reg InPort_write_enable;
+reg LO_en;
+reg LO_write_enable;
+reg MAR_write_enable;
+reg MDR_en;
+reg MDR_write_enable;
+reg OutPort_write_enable;
+reg PC_en;
+reg PC_write_enable;
+reg R_in;
+reg R_out;
+reg Y_write_enable;
+reg Z_write_enable;
+reg Zhi_en;
+reg Zlo_en;
+reg clk;
+reg mem_read_enable;
+reg mem_write_enable;
+reg reset;
+// wires                                               
+
+// assign statements (if any)                          
+Datapath i1 (
+// port map - connection between master ports and signals/registers   
+	.ALU_signals(ALU_signals),
+	.BA_out(BA_out),
+	.CON_en(CON_en),
+	.C_en(C_en),
+	.G_ra(G_ra),
+	.G_rb(G_rb),
+	.G_rc(G_rc),
+	.HI_en(HI_en),
+	.HI_write_enable(HI_write_enable),
+	.IR_write_enable(IR_write_enable),
+	.InPort_en(InPort_en),
+	.InPort_write_enable(InPort_write_enable),
+	.LO_en(LO_en),
+	.LO_write_enable(LO_write_enable),
+	.MAR_write_enable(MAR_write_enable),
+	.MDR_en(MDR_en),
+	.MDR_write_enable(MDR_write_enable),
+	.OutPort_write_enable(OutPort_write_enable),
+	.PC_en(PC_en),
+	.PC_write_enable(PC_write_enable),
+	.R_in(R_in),
+	.R_out(R_out),
+	.Y_write_enable(Y_write_enable),
+	.Z_write_enable(Z_write_enable),
+	.Zhi_en(Zhi_en),
+	.Zlo_en(Zlo_en),
+	.clk(clk),
+	.mem_read_enable(mem_read_enable),
+	.mem_write_enable(mem_write_enable),
+	.reset(reset)
+);
+initial                                                
+begin                                                  
+// code that executes only once                        
+// insert code here --> begin  
+//initialise 
+
+
+
+
+BA_out = 0; //selection of a register with value 0 if R0, otherwise base address out
+CON_en = 0; //enables CON_FF logic
+C_en = 0; //Cout in the notes, enables immediate of IR to be put onto the bus (used as B input for ALU)
+G_ra = 0; //put ra in IR on bus
+G_rb = 0; //put rb in IR on bus
+G_rc = 0; //put rc in IR on bus
+HI_en = 0;
+HI_write_enable = 0;
+IR_write_enable = 0;
+InPort_en = 0;
+InPort_write_enable = 0;
+LO_en = 0;
+LO_write_enable = 0;
+MAR_write_enable = 0;
+MDR_en = 0;
+MDR_write_enable = 0;
+OutPort_write_enable = 0;
+PC_en = 0;
+PC_write_enable = 0;
+R_in = 0;
+R_out = 0;
+Y_write_enable = 0;
+Z_write_enable = 0;
+Zhi_en = 0;
+Zlo_en = 0;
+clk = 0;
+mem_read_enable = 0;
+mem_write_enable = 0;
+ALU_signals = 5'b11110 //nop
+
+reset = 1;
+
+@(posedge clk);
+	reset = 0;
+//Load Word 
+@(posedge clk) //T)
+	PC_en = 1;
+	MAR_write_enable = 1;
+	ALU_signals 5'b11111;
+	Z_write_enable = 1;
+	
+	#5
+	PC_en = 0;
+	MAR_write_enable = 0;
+	ALU_signals = 5'b11110;
+	Z_write_enable = 0;
+	
+
+@(posedge clk) //T1
+	Zlo_en = 1;
+	PC_write_enable = 1;
+	mem_read_enable = 1;
+	MDR_write_enable = 1;
+	
+	#5
+	Zlo_en = 0;
+	PC_write_enable = 0;
+	mem_read_enable = 0;
+	MDR_write_enable = 0;
+	
+@(posedge clk) //T2
+	MDR_en = 1;
+	IR_write_enable = 1;
+	
+	#5
+	MDR_en = 0;
+	IR_write_enable = 0;
+	
+@(posedge clk) //T3
+	G_rb = 1;
+	BA_out = 1;
+	Y_write_enable = 1; //put 0 into Y
+	
+	#5
+	G_rb = 0;
+	BA_out = 0;
+	Y_write_enable = 0;
+	
+@(posedge clk) //T4
+	C_en = 1;
+	ALU_signals = 5'b00101;
+	Z_write_enable = 1;
+	
+	#5
+	C_en = 0;
+	ALU_signals = 5'b11110;
+	Z_write_enable = 0;
+
+@(posedge clk) //T5
+	Zlo_en = 1;
+	MAR_write_enable = 1;
+	
+	#5
+	Zlo_en = 0;
+	MAR_write_enable = 0;
+	
+@(posedge clk) //T6
+	mem_read_enable = 1;
+	MDR_write_enable = 1;
+
+	#5
+	mem_read_enable = 0;
+	MDR_write_enable = 0;
+
+@(posedge clk) //T7
+	MDR_en = 1;
+	G_ra = 1;
+	R_in = 1;
+	
+	#5
+	MDR_en = 0;
+	G_ra = 0;
+	R_in = 0;	
+                   
+                                                       
+// --> end                                             
+$display("Running testbench");                       
+end                                                    
+always                                                 
+// optional sensitivity list                           
+// @(event1 or event2 or .... eventn)                  
+begin                                                  
+// code executes for every event on sensitivity list   
+// insert code here --> begin                          
+	forever begin
+		#10 clk = !clk;
+	end                                                
+@eachvec;                                              
+// --> end                                             
+end                                                    
+endmodule
+
