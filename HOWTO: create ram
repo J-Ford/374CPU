@@ -4,7 +4,7 @@ In the New dialog box, click the + icon to expand the Memory Files item.
 Under Memory Files, select Memory Initialization File, and then click OK.
 Enter 512 words * 32 bits in wizard
 click okay
-save file as RAM_Init.mif in progect directory
+save file as RAM_Init.mif in project directory
 
 CREATE RAM
 Go to link: https://www.youtube.com/watch?v=1nhTDOpY5gU for tutorial
