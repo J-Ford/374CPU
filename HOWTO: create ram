@@ -1,0 +1,19 @@
+CREATE MEM INIT FILE
+On the File menu, click New.
+In the New dialog box, click the + icon to expand the Memory Files item.
+Under Memory Files, select Memory Initialization File, and then click OK.
+Enter 512 words * 32 bits in wizard
+click okay
+save file as RAM_Init.mif in progect directory
+
+CREATE RAM
+Go to link: https://www.youtube.com/watch?v=1nhTDOpY5gU for tutorial
+Changes:
+  Name file:RAM_512
+  Change q width to 32 bits
+  Change word # to 512
+  Under Mem init: 
+    Click yes, use this file for memory init
+    Click browse, select to RAM_Init.mif
+    
+You're Done! Yay!
